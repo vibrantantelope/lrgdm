@@ -1,0 +1,56 @@
+name: Export GPKG to GeoJSON
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install GDAL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin
+
+      - name: Prepare folders
+        run: mkdir -p docs/data
+
+      # Update these layer names to match your GeoPackage
+      - name: Export Places
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/places.geojson src/data/heritage.gpkg Places
+
+      - name: Export People
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/people.geojson src/data/heritage.gpkg People
+
+      - name: Export Events
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/events.geojson src/data/heritage.gpkg Events
+
+      - name: Export PersonPlaces  # (lines)
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/person_places.geojson src/data/heritage.gpkg PersonPlaces
+
+      # Optional: simplify big line/polygon layers to speed up the web map
+      # - name: Simplify heavy layers
+      #   run: mapshaper ...
+
+      - name: Commit changes
+        run: |
+          if [ -n "$(git status --porcelain docs/data)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/data
+            git commit -m "Auto-export GeoJSON from GPKG"
+            git push
+          fi
