@@ -1,68 +1,60 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
+html, body, #root, #map {
+  height: 100%;
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
+#navToggle {
+  position: absolute;
+  z-index: 1100;
+  top: 10px;
+  left: 10px;
+  background: white;
+  border: none;
+  padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .15);
+  font-size: 20px;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.sidebar {
+  position: absolute;
+  z-index: 1000;
+  top: 10px;
+  left: 10px;
+  background: white;
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .15);
+  max-width: 360px;
+  font: 14px/1.3 system-ui, sans-serif;
+}
+
+@media (max-width: 767px) {
+  .sidebar {
+    transform: translateX(-110%);
+    transition: transform .3s ease;
   }
-  a:hover {
-    color: #747bff;
+  .sidebar.sidebar--open {
+    transform: translateX(0);
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@media (min-width: 768px) {
+  #navToggle {
+    display: none;
   }
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: #eee;
+  margin: 2px;
+  cursor: pointer;
+}
+
+.chip.active {
+  background: #ddd;
 }
