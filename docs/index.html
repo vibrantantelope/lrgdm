@@ -125,7 +125,7 @@
   // ---------- Small helpers ----------
   function loadJson(url, onOk) {
     return fetch(url).then(r => {
-      if (!r.ok) throw new Error(${r.status} ${r.statusText} – ${url});
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} – ${url}`);
       return r.json();
     }).then(onOk).catch(err => console.error("Layer load failed:", err));
   }
@@ -136,8 +136,8 @@
                 .map(([k,label]) => [label, props[k]])
       : Object.entries(props).filter(([k,v]) => v != null && v !== "" && typeof v !== "object");
     const rows = entries.map(([k,v]) =>
-      <tr><th style="text-align:left; padding-right:.5rem; white-space:nowrap;">${k}</th><td>${v}</td></tr>).join("");
-    return <table>${rows}</table>;
+      `<tr><th style="text-align:left; padding-right:.5rem; white-space:nowrap;">${k}</th><td>${v}</td></tr>`).join("");
+    return `<table>${rows}</table>`;
   }
 
   const eraColor = era => STYLE.eraColors[era] || "#3742fa";
@@ -148,7 +148,7 @@
   const yearEndEl = document.getElementById('yearEnd');
   const yearLabelEl = document.getElementById('yearLabel');
   function updateYearLabel() {
-    yearLabelEl.textContent = ${yearStartEl.value} - ${yearEndEl.value};
+    yearLabelEl.textContent = `${yearStartEl.value} - ${yearEndEl.value}`;
   }
   function filterByYear() {
     updateYearLabel();
@@ -168,7 +168,7 @@
   const overlays = {};
   function addOverlay(layer, name, addNow=true) {
     overlays[name] = layer;
-    const toggle = document.querySelector(input[data-layer='${name}']);
+    const toggle = document.querySelector(`input[data-layer='${name}']`);
     const update = () => {
       if (!toggle || toggle.checked) {
         map.addLayer(layer);
@@ -237,7 +237,7 @@
     .then(r => {
       const d = r.headers.get("last-modified");
       document.getElementById("updated").textContent =
-        d ? Data last updated: ${new Date(d).toLocaleString()} : "";
+        d ? `Data last updated: ${new Date(d).toLocaleString()}` : "";
     }).catch(() => {});
 
   // ---------- People (Person_Locations) ----------
@@ -349,7 +349,7 @@
         onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.lines))
       });
       lineLayers[era] = sub;
-      addOverlay(sub, Lines: ${era});
+      addOverlay(sub, `Lines: ${era}`);
     });
     const render = (start, end) => {
       eras.forEach(era => {
@@ -374,7 +374,7 @@
       const chip = document.createElement('span');
       chip.textContent = era;
       chip.className = 'chip active';
-      const layerName = Lines: ${era};
+      const layerName = `Lines: ${era}`;
       chip.dataset.layer = layerName;
       chip.style.background = eraColor(era);
       chip.addEventListener('click', () => {
@@ -388,7 +388,7 @@
     const legendEl = document.getElementById("eraLegend");
     legendEl.innerHTML = "<b>Birth→Death Lines (Eras)</b>" +
       Object.entries(STYLE.eraColors)
-        .map(([label, col]) => <div><span class="swatch" style="background:${col}"></span> ${label}</div>)
+        .map(([label, col]) => `<div><span class="swatch" style="background:${col}"></span> ${label}</div>`)
         .join("");
 
     (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'lines' }));
