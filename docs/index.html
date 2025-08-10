@@ -34,175 +34,213 @@
   </div>
 
   <script>
-    // ---- Helpers ----
-    const DATA = "data/"; // all files live in docs/data/
-    function loadJson(url, onOk) {
-      return fetch(url).then(r => {
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText} – ${url}`);
-        return r.json();
-      }).then(onOk).catch(err => console.error("Layer load failed:", err));
-    }
-    function popupForPerson(p) {
-      const name = p.primary_name || p.name || "Unknown";
-      const b = p.birth_year ? `b. ${p.birth_year}` : "";
-      const d = p.death_year ? `d. ${p.death_year}` : "";
-      const life = (b || d) ? ` (${[b, d].filter(Boolean).join(" – ")})` : "";
-      const bp = p.birth_place_name ? `<div><b>Birth place:</b> ${p.birth_place_name}</div>` : "";
-      const dp = p.death_place_name ? `<div><b>Death place:</b> ${p.death_place_name}</div>` : "";
-      return `<div><b>${name}</b>${life}</div>${bp}${dp}`;
-    }
-    function popupForPlace(p) {
-      const name = p.place_name || p.name || "Place";
-      const type = p.place_type ? ` (${p.place_type})` : "";
-      return `<div><b>${name}${type}</b></div>`;
-    }
-    function popupForEvent(p) {
-      const type = p.event_type || "Event";
-      const year = p.event_year ? ` (${p.event_year})` : "";
-      const desc = p.description ? `<div>${p.description}</div>` : "";
-      return `<div><b>${type}${year}</b>${desc}</div>`;
-    }
-    function popupForEraLine(p) {
-      const who = p.primary_name || p.person_name || "Person";
-      const era = p.era || p.Era || "Era";
-      const b = p.birth_year ? `b. ${p.birth_year}` : "";
-      const d = p.death_year ? `d. ${p.death_year}` : "";
-      const life = (b || d) ? ` (${[b, d].filter(Boolean).join(" – ")})` : "";
-      return `<div><b>${who}</b>${life}<div><b>Era:</b> ${era}</div></div>`;
-    }
+  // ---------- CONFIG ----------
+  const DATA = "data/";
 
-    // ---- Map ----
-    const map = L.map("map").setView([41.9, -87.65], 5);
-    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-    const baseLayers = { "OpenStreetMap": osm };
-    const overlays = {};
-    L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
-
-    // Data last updated
-    fetch(DATA + "places.geojson", { method: "HEAD" })
-      .then(r => {
-        const d = r.headers.get("last-modified");
-        document.getElementById("updated").textContent =
-          d ? `Data last updated: ${new Date(d).toLocaleString()}` : " ";
-      }).catch(() => { document.getElementById("updated").textContent = " "; });
-
-    // ---- Styles ----
-    const pointStyle = { radius: 6, weight: 1, color: "#333", fillOpacity: 0.85 };
-    const birthStyle = { radius: 6, weight: 1, color: "#0066cc", fillOpacity: 0.9 };
-    const deathStyle = { radius: 6, weight: 1, color: "#cc0000", fillOpacity: 0.9 };
-    const eventStyle = { color: "#ff6b6b", weight: 2, opacity: 0.9 };
-
-    const eraColors = {
+  // Colors / sizes in one place
+  const STYLE = {
+    people:  { radius: 6, color: "#0A84FF" },
+    places:  { radius: 6, color: "#2ed573" },
+    births:  { radius: 6, color: "#1f77ff" },
+    deaths:  { radius: 6, color: "#e43f3f" },
+    events:  { color: "#ff6b6b", weight: 2, opacity: 0.9 },
+    lines:   { weight: 2.5, opacity: 0.95 },             // default for lines
+    // Era-specific palette (edit freely)
+    eraColors: {
       "Early Republic": "#d9534f",
       "Gilded Age": "#f0ad4e",
       "Colonial Era": "#5cb85c",
       "Civil War & Reconstruction": "#5bc0de",
       "Progressive Era & WWI": "#337ab7",
       "Roaring 20s & Great Depression": "#8e44ad"
-    };
-    const eraColor = era => eraColors[era] || "#3742fa";
-    document.getElementById("eraLegend").innerHTML =
-      "<b>Birth→Death Lines (Eras)</b>" +
-      Object.entries(eraColors).map(([k,v]) =>
-        `<div><span class="swatch" style="background:${v}"></span> ${k}</div>`).join("");
-
-    // ---- Load layers (filenames aligned to workflow outputs) ----
-    // People (from Person_Locations)
-    loadJson(DATA + "people.geojson", data => {
-      const cluster = L.markerClusterGroup();
-      const layer = L.geoJSON(data, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, pointStyle),
-        onEachFeature: (f, l) => l.bindPopup(popupForPerson(f.properties || {}))
-      });
-      cluster.addLayer(layer);
-      overlays["People"] = cluster;
-      map.addLayer(cluster);
-      fitIfNeeded();
-    });
-
-    // Places
-    loadJson(DATA + "places.geojson", data => {
-      const layer = L.geoJSON(data, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, { ...pointStyle, fillOpacity: 0.6 }),
-        style: () => ({ color: "#2ed573", weight: 2, opacity: 0.8, fillOpacity: 0.2 }),
-        onEachFeature: (f, l) => l.bindPopup(popupForPlace(f.properties || {}))
-      });
-      overlays["Places"] = layer;
-      map.addLayer(layer);
-      fitIfNeeded();
-    });
-
-    // Events (from Event_Points)
-    loadJson(DATA + "events.geojson", data => {
-      const layer = L.geoJSON(data, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, { ...pointStyle, color: "#b30000" }),
-        style: () => eventStyle,
-        onEachFeature: (f, l) => l.bindPopup(popupForEvent(f.properties || {}))
-      });
-      overlays["Events"] = layer;
-      map.addLayer(layer);
-      fitIfNeeded();
-    });
-
-    // Birth points
-    loadJson(DATA + "birth_location_points.geojson", data => {
-      const layer = L.geoJSON(data, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, birthStyle),
-        onEachFeature: (f, l) => {
-          const p = f.properties || {};
-          l.bindPopup(`<div><b>Birth</b>${p.birth_year ? " ("+p.birth_year+")" : ""}<div>${p.primary_name || p.person_name || ""}</div></div>`);
-        }
-      });
-      overlays["Birth Points"] = layer;
-      map.addLayer(layer);
-      fitIfNeeded();
-    });
-
-    // Death points
-    loadJson(DATA + "death_location_points.geojson", data => {
-      const layer = L.geoJSON(data, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, deathStyle),
-        onEachFeature: (f, l) => {
-          const p = f.properties || {};
-          l.bindPopup(`<div><b>Death</b>${p.death_year ? " ("+p.death_year+")" : ""}<div>${p.primary_name || p.person_name || ""}</div></div>`);
-        }
-      });
-      overlays["Death Points"] = layer;
-      map.addLayer(layer);
-      fitIfNeeded();
-    });
-
-    // Birth→Death Lines (Eras)
-    loadJson(DATA + "birth_to_death_lines_eras.geojson", data => {
-      const layer = L.geoJSON(data, {
-        style: f => ({ color: eraColor((f.properties||{}).era), weight: 2.5, opacity: 0.95 }),
-        onEachFeature: (f, l) => l.bindPopup(popupForEraLine(f.properties || {}))
-      });
-      overlays["Birth→Death Lines (Eras)"] = layer;
-      map.addLayer(layer);
-      fitIfNeeded();
-    });
-
-    // ---- Fit map to visible layers once ----
-    let fitted = false;
-    function fitIfNeeded() {
-      if (fitted) return;
-      let bounds = null;
-      for (const layer of Object.values(overlays)) {
-        if (!map.hasLayer(layer)) continue;
-        try {
-          const b = layer.getBounds ? layer.getBounds() : L.featureGroup([layer]).getBounds();
-          if (b && b.isValid()) bounds = bounds ? bounds.extend(b) : b;
-        } catch {}
-      }
-      if (bounds && bounds.isValid()) {
-        map.fitBounds(bounds.pad(0.15));
-        fitted = true;
-      }
     }
-  </script>
+  };
+
+  // Popup field lists (set to null to show ALL attributes)
+  const FIELDS = {
+    people: [
+      ["primary_name","Name"],
+      ["sex","Sex"],
+      ["birth_year","Birth Year"],
+      ["death_year","Death Year"],
+      ["birth_place_name","Birth Place"],
+      ["death_place_name","Death Place"],
+      ["residence","Residence"]
+    ],
+    places: [
+      ["place_name","Place"],
+      ["place_type","Type"],
+      ["country","Country"],
+      ["state","State"], ["county","County"]
+    ],
+    events: [
+      ["event_type","Type"], ["event_year","Year"], ["description","Description"]
+    ],
+    births: [
+      ["primary_name","Name"], ["birth_year","Birth Year"], ["birth_place_name","Birth Place"]
+    ],
+    deaths: [
+      ["primary_name","Name"], ["death_year","Death Year"], ["death_place_name","Death Place"]
+    ],
+    lines: [
+      ["primary_name","Name"], ["era","Era"], ["birth_year","Birth Year"], ["death_year","Death Year"]
+    ]
+  };
+
+  // ---------- Small helpers ----------
+  function loadJson(url, onOk) {
+    return fetch(url).then(r => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} – ${url}`);
+      return r.json();
+    }).then(onOk).catch(err => console.error("Layer load failed:", err));
+  }
+
+  function popupTable(props, fieldList=null) {
+    const entries = fieldList
+      ? fieldList.filter(([k]) => props[k] != null && props[k] !== "")
+                .map(([k,label]) => [label, props[k]])
+      : Object.entries(props).filter(([k,v]) => v != null && v !== "" && typeof v !== "object");
+    const rows = entries.map(([k,v]) =>
+      `<tr><th style="text-align:left; padding-right:.5rem; white-space:nowrap;">${k}</th><td>${v}</td></tr>`).join("");
+    return `<table>${rows}</table>`;
+  }
+
+  const eraColor = era => STYLE.eraColors[era] || "#3742fa";
+
+  // ---------- Map ----------
+  const map = L.map("map").setView([41.9, -87.65], 5);
+  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Extra basemaps (optional – uncomment if you want more)
+  const esriGray = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Tiles © Esri" }
+  );
+  const esriNatGeo = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Tiles © Esri" }
+  );
+
+  const baseLayers = {
+    "OpenStreetMap": osm,
+    "ESRI Gray (light)": esriGray,
+    "ESRI NatGeo": esriNatGeo
+  };
+
+  const layersControl = L.control.layers(baseLayers, {}, { collapsed: false }).addTo(map);
+  const overlays = {};
+  function addOverlay(layer, name, addNow=true) {
+    overlays[name] = layer;
+    layersControl.addOverlay(layer, name);
+    if (addNow) map.addLayer(layer);
+    fitIfNeeded();
+  }
+
+  // Data last updated
+  fetch(DATA + "places.geojson", { method: "HEAD" })
+    .then(r => {
+      const d = r.headers.get("last-modified");
+      document.getElementById("updated").textContent =
+        d ? `Data last updated: ${new Date(d).toLocaleString()}` : "";
+    }).catch(() => {});
+
+  // ---------- People (Person_Locations) ----------
+  loadJson(DATA + "people.geojson", data => {
+    const cluster = L.markerClusterGroup();
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.people.radius, color: STYLE.people.color, weight: 1, fillOpacity: .85 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.people))
+    });
+    cluster.addLayer(layer);
+    addOverlay(cluster, "People", true);
+  });
+
+  // ---------- Places ----------
+  loadJson(DATA + "places.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.places.radius, color: STYLE.places.color, weight: 1, fillOpacity: .6 }),
+      style: () => ({ color: STYLE.places.color, weight: 2, opacity: .8, fillOpacity: .2 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.places))
+    });
+    addOverlay(layer, "Places", true);
+  });
+
+  // ---------- Events (Event_Points) ----------
+  loadJson(DATA + "events.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: 6, color: "#b30000", weight: 1, fillOpacity: .9 }),
+      style: () => ({ ...STYLE.events }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.events))
+    });
+    addOverlay(layer, "Events", false);
+  });
+
+  // ---------- Birth / Death points ----------
+  loadJson(DATA + "birth_location_points.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.births.radius, color: STYLE.births.color, weight: 1, fillOpacity: .9 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.births))
+    });
+    addOverlay(layer, "Birth Points", true);
+  });
+
+  loadJson(DATA + "death_location_points.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.deaths.radius, color: STYLE.deaths.color, weight: 1, fillOpacity: .9 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.deaths))
+    });
+    addOverlay(layer, "Death Points", true);
+  });
+
+  // ---------- Birth→Death Lines split into toggles per Era ----------
+  loadJson(DATA + "birth_to_death_lines_eras.geojson", data => {
+    const eras = Array.from(
+      new Set((data.features || []).map(f => (f.properties || {}).era).filter(Boolean))
+    ).sort();
+    // Build a layer for each era, add each as its own toggle
+    eras.forEach(era => {
+      const sub = L.geoJSON(data, {
+        filter: f => (f.properties || {}).era === era,
+        style: () => ({ color: eraColor(era), weight: STYLE.lines.weight, opacity: STYLE.lines.opacity }),
+        onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.lines))
+      });
+      addOverlay(sub, `Lines: ${era}`, true);
+    });
+
+    // Build a legend from STYLE.eraColors
+    const legendEl = document.getElementById("eraLegend");
+    legendEl.innerHTML = "<b>Birth→Death Lines (Eras)</b>" +
+      Object.entries(STYLE.eraColors)
+        .map(([label, col]) => `<div><span class="swatch" style="background:${col}"></span> ${label}</div>`)
+        .join("");
+  });
+
+  // ----- Fit map to visible layers once -----
+  let fitted = false;
+  function fitIfNeeded() {
+    if (fitted) return;
+    let bounds = null;
+    for (const layer of Object.values(overlays)) {
+      if (!map.hasLayer(layer)) continue;
+      try {
+        const b = layer.getBounds ? layer.getBounds() : L.featureGroup([layer]).getBounds();
+        if (b && b.isValid()) bounds = bounds ? bounds.extend(b) : b;
+      } catch {}
+    }
+    if (bounds && bounds.isValid()) {
+      map.fitBounds(bounds.pad(0.15));
+      fitted = true;
+    }
+  }
+</script>
+
 </body>
 </html>
 
