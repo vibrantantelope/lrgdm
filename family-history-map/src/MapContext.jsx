@@ -9,6 +9,28 @@ import 'leaflet-arrowheads'
 
 const MapContext = createContext(null)
 
+// Available basemap layers
+const basemapLayers = {
+  OpenStreetMap: L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { attribution: '&copy; OpenStreetMap contributors' },
+  ),
+  OpenTopoMap: L.tileLayer(
+    'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    {
+      attribution:
+        'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
+    },
+  ),
+  'Stamen Toner': L.tileLayer(
+    'https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
+    {
+      attribution:
+        'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+    },
+  ),
+}
+
 function popupTable(props) {
   return `<table>${Object.entries(props)
     .map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`)
@@ -25,6 +47,8 @@ export function MapProvider({ children }) {
   const [yearEnd, setYearEnd] = useState(2020)
   const [eras, setEras] = useState([])
   const [activeLayers, setActiveLayers] = useState({})
+  const [basemap, setBasemap] = useState('OpenStreetMap')
+  const basemapRef = useRef(null)
 
   const eraColors = {
     'Early Republic': '#d9534f',
@@ -37,9 +61,6 @@ export function MapProvider({ children }) {
 
   useEffect(() => {
     mapRef.current = L.map('map').setView([0, 0], 2)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(mapRef.current)
 
     const loadJson = url => fetch(url).then(r => r.json())
 
@@ -228,6 +249,15 @@ export function MapProvider({ children }) {
   }, [])
 
   useEffect(() => {
+    if (!mapRef.current) return
+    const layer = basemapLayers[basemap]
+    if (!layer) return
+    if (basemapRef.current) mapRef.current.removeLayer(basemapRef.current)
+    layer.addTo(mapRef.current)
+    basemapRef.current = layer
+  }, [basemap])
+
+  useEffect(() => {
     yearFiltersRef.current.forEach(fn => fn(yearStart, yearEnd))
   }, [yearStart, yearEnd])
 
@@ -278,6 +308,9 @@ export function MapProvider({ children }) {
     eraColors,
     search,
     applyPreset,
+    basemap,
+    setBasemap,
+    basemapOptions: Object.keys(basemapLayers),
   }
 
   return (
