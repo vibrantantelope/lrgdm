@@ -66,6 +66,12 @@ jobs:
           ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
             docs/data/birth_to_death_lines.geojson src/data/lrgdm_v2.gpkg Birth_to_Death_Lines
 
+      - name: Export Birth→Death Lines (Eras)
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/birth_to_death_lines_eras.geojson src/data/lrgdm_v2.gpkg "Birth_to_Death_Lines_Eras"
+
+
       - name: Commit changes
         run: |
           if [ -n "$(git status --porcelain docs/data)" ]; then
