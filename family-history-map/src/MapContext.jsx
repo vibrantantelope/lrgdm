@@ -92,7 +92,9 @@ export function MapProvider({ children }) {
       }
       yearFiltersRef.current.push(render)
       render(yearStart, yearEnd)
-      addOverlay(layer, 'People', true)
+      const cluster = L.markerClusterGroup({ spiderfyOnMaxZoom: true })
+      cluster.addLayer(layer)
+      addOverlay(cluster, 'People', true)
       ;(data.features || []).forEach(f =>
         searchIndexRef.current.push({ feature: f, field: 'people' }),
       )
@@ -116,7 +118,9 @@ export function MapProvider({ children }) {
         }),
         onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {})),
       })
-      addOverlay(layer, 'Places', true)
+      const cluster = L.markerClusterGroup({ spiderfyOnMaxZoom: true })
+      cluster.addLayer(layer)
+      addOverlay(cluster, 'Places', true)
       ;(data.features || []).forEach(f =>
         searchIndexRef.current.push({ feature: f, field: 'places' }),
       )
@@ -145,7 +149,9 @@ export function MapProvider({ children }) {
       }
       yearFiltersRef.current.push(render)
       render(yearStart, yearEnd)
-      addOverlay(layer, 'Events', false)
+      const cluster = L.markerClusterGroup({ spiderfyOnMaxZoom: true })
+      cluster.addLayer(layer)
+      addOverlay(cluster, 'Events', false)
       ;(data.features || []).forEach(f =>
         searchIndexRef.current.push({ feature: f, field: 'events' }),
       )
@@ -173,7 +179,9 @@ export function MapProvider({ children }) {
       }
       yearFiltersRef.current.push(render)
       render(yearStart, yearEnd)
-      addOverlay(layer, 'Birth Points', true)
+      const cluster = L.markerClusterGroup({ spiderfyOnMaxZoom: true })
+      cluster.addLayer(layer)
+      addOverlay(cluster, 'Birth Points', true)
       ;(data.features || []).forEach(f =>
         searchIndexRef.current.push({ feature: f, field: 'births' }),
       )
@@ -201,7 +209,9 @@ export function MapProvider({ children }) {
       }
       yearFiltersRef.current.push(render)
       render(yearStart, yearEnd)
-      addOverlay(layer, 'Death Points', true)
+      const cluster = L.markerClusterGroup({ spiderfyOnMaxZoom: true })
+      cluster.addLayer(layer)
+      addOverlay(cluster, 'Death Points', true)
       ;(data.features || []).forEach(f =>
         searchIndexRef.current.push({ feature: f, field: 'deaths' }),
       )
