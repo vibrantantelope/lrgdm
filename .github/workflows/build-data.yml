@@ -9,8 +9,10 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (with LFS)
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Install GDAL
         run: |
@@ -20,7 +22,15 @@ jobs:
       - name: Prepare folders
         run: mkdir -p docs/data
 
-      # === Exports from lrgdm_v2.gpkg ===
+      - name: Sanity check data file and list layers
+        run: |
+          ls -lah src/data
+          echo "---- file info ----"
+          file src/data/lrgdm_v2.gpkg || true
+          echo "---- ogrinfo ----"
+          ogrinfo -q src/data/lrgdm_v2.gpkg | sed -n '1,120p'
+
+      # === Exports ===
       - name: Export People
         run: |
           ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
@@ -56,7 +66,6 @@ jobs:
           ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
             docs/data/birth_to_death_lines.geojson src/data/lrgdm_v2.gpkg Birth_to_Death_Lines
 
-      # Commit generated files if changed
       - name: Commit changes
         run: |
           if [ -n "$(git status --porcelain docs/data)" ]; then
