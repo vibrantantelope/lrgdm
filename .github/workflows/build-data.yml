@@ -20,31 +20,43 @@ jobs:
       - name: Prepare folders
         run: mkdir -p docs/data
 
-      # Update these layer names to match your GeoPackage
-      - name: Export Places
-        run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
-            docs/data/places.geojson src/data/heritage.gpkg Places
-
+      # === Exports from lrgdm_v2.gpkg ===
       - name: Export People
         run: |
           ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
-            docs/data/people.geojson src/data/heritage.gpkg People
+            docs/data/people.geojson src/data/lrgdm_v2.gpkg People
+
+      - name: Export Places
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/places.geojson src/data/lrgdm_v2.gpkg Places
 
       - name: Export Events
         run: |
           ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
-            docs/data/events.geojson src/data/heritage.gpkg Events
+            docs/data/events.geojson src/data/lrgdm_v2.gpkg Events
 
-      - name: Export PersonPlaces  # (lines)
+      - name: Export EventParticipants
         run: |
           ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
-            docs/data/person_places.geojson src/data/heritage.gpkg PersonPlaces
+            docs/data/event_participants.geojson src/data/lrgdm_v2.gpkg EventParticipants
 
-      # Optional: simplify big line/polygon layers to speed up the web map
-      # - name: Simplify heavy layers
-      #   run: mapshaper ...
+      - name: Export Birth Location Points
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/birth_location_points.geojson src/data/lrgdm_v2.gpkg Birth_Location_Points
 
+      - name: Export Death Location Points
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/death_location_points.geojson src/data/lrgdm_v2.gpkg Death_Location_Points
+
+      - name: Export Birth to Death Lines
+        run: |
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/birth_to_death_lines.geojson src/data/lrgdm_v2.gpkg Birth_to_Death_Lines
+
+      # Commit generated files if changed
       - name: Commit changes
         run: |
           if [ -n "$(git status --porcelain docs/data)" ]; then
