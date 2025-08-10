@@ -1,12 +1,12 @@
 import { useMapContext } from '../MapContext'
 
-const LAYERS = ['People', 'Places', 'Events', 'Birth Points', 'Death Points']
-
 export default function LayerToggles() {
   const { activeLayers, setLayerVisible } = useMapContext()
+  const layerNames = Object.keys(activeLayers)
+
   return (
     <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-      {LAYERS.map(name => (
+      {layerNames.map(name => (
         <label key={name} style={{ whiteSpace: 'nowrap' }}>
           <input
             type="checkbox"
