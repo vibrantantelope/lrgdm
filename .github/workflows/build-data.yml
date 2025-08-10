@@ -12,7 +12,6 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
-      # --- Manual git init instead of actions/checkout ---
       - name: Clone repo (manual, with LFS)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,46 +43,57 @@ jobs:
           ogrinfo -q src/data/lrgdm_v2.gpkg | sed -n '1,200p'
 
       # === Exports ===
-      - name: Export People
+      - name: Export People (Person_Locations)
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/people.geojson src/data/lrgdm_v2.gpkg People
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/people.geojson src/data/lrgdm_v2.gpkg "Person_Locations"
 
       - name: Export Places
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/places.geojson src/data/lrgdm_v2.gpkg Places
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/places.geojson src/data/lrgdm_v2.gpkg "Places"
 
-      - name: Export Events
+      - name: Export Events (Event_Points)
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/events.geojson src/data/lrgdm_v2.gpkg Events
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/events.geojson src/data/lrgdm_v2.gpkg "Event_Points"
 
       - name: Export EventParticipants
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/event_participants.geojson src/data/lrgdm_v2.gpkg EventParticipants
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/event_participants.geojson src/data/lrgdm_v2.gpkg "EventParticipants"
 
       - name: Export Birth Location Points
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/birth_location_points.geojson src/data/lrgdm_v2.gpkg "Birth_Location_Points"
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/birth_location_points.geojson src/data/lrgdm_v2.gpkg "Birth_Location_Points"
 
       - name: Export Death Location Points
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/death_location_points.geojson src/data/lrgdm_v2.gpkg "Death_Location_Points"
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/death_location_points.geojson src/data/lrgdm_v2.gpkg "Death_Location_Points"
 
       - name: Export Birth to Death Lines
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/birth_to_death_lines.geojson src/data/lrgdm_v2.gpkg "Birth_to_Death_Lines"
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/birth_to_death_lines.geojson src/data/lrgdm_v2.gpkg "Birth_to_Death_Lines"
 
       - name: Export Birth→Death Lines (Eras)
         run: |
-          ogr2ogr -f GeoJSON -t_srs EPSG:4326 docs/data/birth_to_death_lines_eras.geojson src/data/lrgdm_v2.gpkg "Birth_to_Death_Lines_Eras"
+          ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+            docs/data/birth_to_death_lines_eras.geojson src/data/lrgdm_v2.gpkg "Birth_to_Death_Lines_Eras" || echo "Eras layer missing; skipping"
 
-      # --- Commit and push directly ---
       - name: Commit changes
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           if [ -n "$(git status --porcelain docs/data)" ]; then
             git add docs/data
             git commit -m "Auto-export GeoJSON from GPKG"
             git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
           else
             echo "No changes to commit"
+          fi
+
