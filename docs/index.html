@@ -22,13 +22,33 @@
     .legend div { margin: 4px 0; display:flex; align-items:center; gap:6px; }
     .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; }
     .dim { color:#666 }
+    .chip { display:inline-block; padding:2px 6px; border-radius:12px; background:#eee; margin:2px; cursor:pointer; }
+    .chip.active { background:#ddd; }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <div class="sidebar">
-    <strong>Family History Map</strong>
-    <div>Click points/lines to see details. Use the layer toggle (top-right).</div>
+    <div><input id="searchInput" type="text" placeholder="Search…" style="width:100%" /></div>
+    <div style="margin-top:6px;">
+      <label>Years: <span id="yearLabel"></span></label>
+      <div style="display:flex; gap:4px;">
+        <input type="range" id="yearStart" min="1600" max="2020" value="1600" style="flex:1;">
+        <input type="range" id="yearEnd" min="1600" max="2020" value="2020" style="flex:1;">
+      </div>
+    </div>
+    <div id="layerToggles" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;">
+      <label><input type="checkbox" data-layer="People" checked> People</label>
+      <label><input type="checkbox" data-layer="Places" checked> Places</label>
+      <label><input type="checkbox" data-layer="Events"> Events</label>
+      <label><input type="checkbox" data-layer="Birth Points" checked> Births</label>
+      <label><input type="checkbox" data-layer="Death Points" checked> Deaths</label>
+    </div>
+    <div id="eraChips" style="margin-top:8px;"></div>
+    <div id="presets" style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;">
+      <button data-range="1600-2020" data-layers="People,Places,Events,Birth Points,Death Points">All</button>
+      <button data-range="1800-1900" data-layers="People">People 1800-1900</button>
+    </div>
     <div id="updated" class="legend dim">Loading…</div>
     <div id="eraLegend" class="legend"></div>
   </div>
@@ -107,36 +127,89 @@
 
   const eraColor = era => STYLE.eraColors[era] || "#3742fa";
 
-  // ---------- Map ----------
+  const searchIndex = [];
+  const yearFilters = [];
+  const yearStartEl = document.getElementById('yearStart');
+  const yearEndEl = document.getElementById('yearEnd');
+  const yearLabelEl = document.getElementById('yearLabel');
+  function updateYearLabel() {
+    yearLabelEl.textContent = `${yearStartEl.value} - ${yearEndEl.value}`;
+  }
+  function filterByYear() {
+    updateYearLabel();
+    const start = +yearStartEl.value;
+    const end = +yearEndEl.value;
+    yearFilters.forEach(fn => fn(start, end));
+  }
+  yearStartEl.addEventListener('input', filterByYear);
+  yearEndEl.addEventListener('input', filterByYear);
+  updateYearLabel();
+
   const map = L.map("map").setView([41.9, -87.65], 5);
-  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // Extra basemaps (optional – uncomment if you want more)
-  const esriGray = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "Tiles © Esri" }
-  );
-  const esriNatGeo = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "Tiles © Esri" }
-  );
-
-  const baseLayers = {
-    "OpenStreetMap": osm,
-    "ESRI Gray (light)": esriGray,
-    "ESRI NatGeo": esriNatGeo
-  };
-
-  const layersControl = L.control.layers(baseLayers, {}, { collapsed: false }).addTo(map);
   const overlays = {};
   function addOverlay(layer, name, addNow=true) {
     overlays[name] = layer;
-    layersControl.addOverlay(layer, name);
-    if (addNow) map.addLayer(layer);
-    fitIfNeeded();
+    const toggle = document.querySelector(`input[data-layer='${name}']`);
+    const update = () => {
+      if (!toggle || toggle.checked) {
+        map.addLayer(layer);
+      } else {
+        map.removeLayer(layer);
+      }
+      fitIfNeeded();
+    };
+    if (toggle) toggle.addEventListener('change', update);
+    if (addNow) update();
   }
+
+  const searchInputEl = document.getElementById('searchInput');
+  function doSearch(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return;
+    const match = searchIndex.find(({feature}) =>
+      Object.values(feature.properties || {}).some(v => String(v).toLowerCase().includes(q))
+    );
+    if (match) {
+      const tmp = L.geoJSON(match.feature);
+      tmp.bindPopup(popupTable(match.feature.properties || {}, FIELDS[match.field]));
+      tmp.addTo(map);
+      map.fitBounds(tmp.getBounds().pad(0.25));
+      tmp.openPopup();
+      setTimeout(() => map.removeLayer(tmp), 5000);
+    }
+  }
+  searchInputEl.addEventListener('change', e => doSearch(e.target.value));
+  searchInputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(e.target.value); }
+  });
+
+  document.querySelectorAll('#presets button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const layers = (btn.dataset.layers || '').split(',').map(s => s.trim()).filter(Boolean);
+      document.querySelectorAll('input[data-layer]').forEach(cb => {
+        cb.checked = layers.includes(cb.dataset.layer);
+        cb.dispatchEvent(new Event('change'));
+      });
+      document.querySelectorAll('#eraChips .chip').forEach(chip => {
+        const active = layers.includes(chip.dataset.layer);
+        chip.classList.toggle('active', active);
+        const layer = overlays[chip.dataset.layer];
+        if (layer) {
+          if (active) map.addLayer(layer); else map.removeLayer(layer);
+        }
+      });
+      if (btn.dataset.range) {
+        const [s,e] = btn.dataset.range.split('-').map(Number);
+        yearStartEl.value = s;
+        yearEndEl.value = e;
+        filterByYear();
+      }
+    });
+  });
 
   // Data last updated
   fetch(DATA + "places.geojson", { method: "HEAD" })
@@ -149,13 +222,23 @@
   // ---------- People (Person_Locations) ----------
   loadJson(DATA + "people.geojson", data => {
     const cluster = L.markerClusterGroup();
-    const layer = L.geoJSON(data, {
-      pointToLayer: (f, latlng) =>
-        L.circleMarker(latlng, { radius: STYLE.people.radius, color: STYLE.people.color, weight: 1, fillOpacity: .85 }),
-      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.people))
-    });
-    cluster.addLayer(layer);
-    addOverlay(cluster, "People", true);
+    const render = (start, end) => {
+      cluster.clearLayers();
+      const layer = L.geoJSON(data, {
+        filter: f => {
+          const y = (f.properties || {}).birth_year || (f.properties || {}).death_year;
+          return !y || (y >= start && y <= end);
+        },
+        pointToLayer: (f, latlng) =>
+          L.circleMarker(latlng, { radius: STYLE.people.radius, color: STYLE.people.color, weight: 1, fillOpacity: .85 }),
+        onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.people))
+      });
+      cluster.addLayer(layer);
+    };
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(cluster, "People");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'people' }));
   });
 
   // ---------- Places ----------
@@ -166,37 +249,71 @@
       style: () => ({ color: STYLE.places.color, weight: 2, opacity: .8, fillOpacity: .2 }),
       onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.places))
     });
-    addOverlay(layer, "Places", true);
+    addOverlay(layer, "Places");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'places' }));
   });
 
   // ---------- Events (Event_Points) ----------
   loadJson(DATA + "events.geojson", data => {
-    const layer = L.geoJSON(data, {
+    const layer = L.geoJSON([], {
       pointToLayer: (f, latlng) =>
         L.circleMarker(latlng, { radius: 6, color: "#b30000", weight: 1, fillOpacity: .9 }),
       style: () => ({ ...STYLE.events }),
       onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.events))
     });
+    const render = (start, end) => {
+      layer.clearLayers();
+      const feats = (data.features || []).filter(f => {
+        const y = (f.properties || {}).event_year;
+        return !y || (y >= start && y <= end);
+      });
+      layer.addData({ type: "FeatureCollection", features: feats });
+    };
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
     addOverlay(layer, "Events", false);
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'events' }));
   });
 
   // ---------- Birth / Death points ----------
   loadJson(DATA + "birth_location_points.geojson", data => {
-    const layer = L.geoJSON(data, {
+    const layer = L.geoJSON([], {
       pointToLayer: (f, latlng) =>
         L.circleMarker(latlng, { radius: STYLE.births.radius, color: STYLE.births.color, weight: 1, fillOpacity: .9 }),
       onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.births))
     });
-    addOverlay(layer, "Birth Points", true);
+    const render = (start, end) => {
+      layer.clearLayers();
+      const feats = (data.features || []).filter(f => {
+        const y = (f.properties || {}).birth_year;
+        return !y || (y >= start && y <= end);
+      });
+      layer.addData({ type: "FeatureCollection", features: feats });
+    };
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(layer, "Birth Points");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'births' }));
   });
 
   loadJson(DATA + "death_location_points.geojson", data => {
-    const layer = L.geoJSON(data, {
+    const layer = L.geoJSON([], {
       pointToLayer: (f, latlng) =>
         L.circleMarker(latlng, { radius: STYLE.deaths.radius, color: STYLE.deaths.color, weight: 1, fillOpacity: .9 }),
       onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.deaths))
     });
-    addOverlay(layer, "Death Points", true);
+    const render = (start, end) => {
+      layer.clearLayers();
+      const feats = (data.features || []).filter(f => {
+        const y = (f.properties || {}).death_year;
+        return !y || (y >= start && y <= end);
+      });
+      layer.addData({ type: "FeatureCollection", features: feats });
+    };
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(layer, "Death Points");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'deaths' }));
   });
 
   // ---------- Birth→Death Lines split into toggles per Era ----------
@@ -204,22 +321,53 @@
     const eras = Array.from(
       new Set((data.features || []).map(f => (f.properties || {}).era).filter(Boolean))
     ).sort();
-    // Build a layer for each era, add each as its own toggle
+    const lineLayers = {};
     eras.forEach(era => {
-      const sub = L.geoJSON(data, {
-        filter: f => (f.properties || {}).era === era,
+      const sub = L.geoJSON([], {
         style: () => ({ color: eraColor(era), weight: STYLE.lines.weight, opacity: STYLE.lines.opacity }),
         onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.lines))
       });
-      addOverlay(sub, `Lines: ${era}`, true);
+      lineLayers[era] = sub;
+      addOverlay(sub, `Lines: ${era}`);
+    });
+    const render = (start, end) => {
+      eras.forEach(era => {
+        const layer = lineLayers[era];
+        layer.clearLayers();
+        const feats = (data.features || []).filter(f => {
+          const p = f.properties || {};
+          const y = p.birth_year || p.death_year;
+          return p.era === era && (!y || (y >= start && y <= end));
+        });
+        layer.addData({ type: "FeatureCollection", features: feats });
+      });
+    };
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+
+    const chipContainer = document.getElementById('eraChips');
+    eras.forEach(era => {
+      const chip = document.createElement('span');
+      chip.textContent = era;
+      chip.className = 'chip active';
+      const layerName = `Lines: ${era}`;
+      chip.dataset.layer = layerName;
+      chip.style.background = eraColor(era);
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        const layer = overlays[layerName];
+        if (chip.classList.contains('active')) map.addLayer(layer); else map.removeLayer(layer);
+      });
+      chipContainer.appendChild(chip);
     });
 
-    // Build a legend from STYLE.eraColors
     const legendEl = document.getElementById("eraLegend");
     legendEl.innerHTML = "<b>Birth→Death Lines (Eras)</b>" +
       Object.entries(STYLE.eraColors)
         .map(([label, col]) => `<div><span class="swatch" style="background:${col}"></span> ${label}</div>`)
         .join("");
+
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'lines' }));
   });
 
   // ----- Fit map to visible layers once -----
