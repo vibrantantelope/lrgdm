@@ -1,3 +1,12 @@
+import Sidebar from './components/Sidebar'
+import { MapProvider } from './MapContext'
+
+export default function App() {
+  return (
+    <MapProvider>
+      <Sidebar />
+    </MapProvider>
+  )
 import { useEffect } from 'react'
 import L from 'leaflet'
 import 'leaflet.markercluster'
@@ -192,5 +201,3 @@ function App() {
 
   return <div id="map"></div>
 }
-
-export default App
