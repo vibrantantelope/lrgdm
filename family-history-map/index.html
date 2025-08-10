@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Family History Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet-arrowheads@1.3.1/src/leaflet-arrowheads.js"></script>
+    <style>
+      html, body, #map { height: 100%; margin: 0; }
+      #navToggle {
+        position: absolute; z-index: 1100; top: 10px; left: 10px;
+        background: white; border: none; padding: 6px 10px;
+        border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15);
+        font-size: 20px; cursor: pointer;
+      }
+      .sidebar {
+        position: absolute; z-index: 1000; top: 10px; left: 10px;
+        background: white; padding: 10px 12px; border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(0,0,0,.15); max-width: 360px; font: 14px/1.3 system-ui, sans-serif;
+      }
+      @media (max-width: 767px) {
+        .sidebar { transform: translateX(-110%); transition: transform .3s ease; }
+        .sidebar.sidebar--open { transform: translateX(0); }
+      }
+      @media (min-width: 768px) {
+        #navToggle { display: none; }
+      }
+      .legend { margin-top: 8px; font-size: 13px; }
+      .legend div { margin: 4px 0; display:flex; align-items:center; gap:6px; }
+      .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; }
+      .dim { color:#666 }
+      .chip { display:inline-block; padding:2px 6px; border-radius:12px; background:#eee; margin:2px; cursor:pointer; }
+      .chip.active { background:#ddd; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
