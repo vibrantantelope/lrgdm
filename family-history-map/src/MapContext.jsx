@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-arrowheads'
 
 const MapContext = createContext(null)
 
@@ -197,6 +198,7 @@ export function MapProvider({ children }) {
             opacity: 0.95,
           }),
           onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {})),
+          arrowheads: { size: '8px', frequency: 'endonly', fill: true },
         })
         lineLayers[era] = sub
         addOverlay(sub, `Lines: ${era}`, true)
