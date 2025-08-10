@@ -3,386 +3,415 @@
 <head>
   <meta charset="utf-8" />
   <title>Family History Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <!-- Silence favicon 404 -->
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-
-  <!-- Leaflet core -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-
   <!-- MarkerCluster -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-
-  <!-- REQUIRED by leaflet-arrowheads -->
-  <script src="https://unpkg.com/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.js"></script>
-  <!-- Arrowheads -->
   <script src="https://unpkg.com/leaflet-arrowheads@1.3.1/src/leaflet-arrowheads.js"></script>
-
   <style>
-    :root { --pad: clamp(8px, 2.5vw, 14px); --thumb-size: 44px; --card: #fff; --shadow: 0 6px 18px rgba(0,0,0,.15); }
-    html, body, #map { height:100%; margin:0; }
-    .leaflet-top.leaflet-right { margin-top: calc(env(safe-area-inset-top, 0px) + var(--pad)); margin-right: calc(env(safe-area-inset-right, 0px) + var(--pad)); }
-    .leaflet-control-zoom a { width: var(--thumb-size); height: var(--thumb-size); line-height: var(--thumb-size); font-size: 20px; }
-    #navToggle { position:absolute; z-index:1100; top:calc(env(safe-area-inset-top,0px)+var(--pad)); left:calc(env(safe-area-inset-left,0px)+var(--pad));
-      background:var(--card); border:none; padding:8px 12px; border-radius:10px; box-shadow:var(--shadow); font-size:20px; cursor:pointer; }
-    @media (min-width:768px){ #navToggle{ display:none; } }
-    .sidebar { position:absolute; z-index:1000; top:calc(env(safe-area-inset-top,0px)+var(--pad)); left:calc(env(safe-area-inset-left,0px)+var(--pad));
-      background:var(--card); padding:12px; border-radius:12px; box-shadow:var(--shadow); max-width:min(380px,92vw); font:14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    @media (max-width:767px){ .sidebar{ transform:translateX(-110%); transition:transform .28s ease; } .sidebar.sidebar--open{ transform:translateX(0); } }
-    .chip { display:inline-block; padding:6px 10px; border-radius:16px; background:#eee; margin:2px; cursor:pointer; user-select:none; }
+    html, body, #map { height: 100%; margin: 0; }
+    #navToggle {
+      position: absolute; z-index: 1100; top: 10px; left: 10px;
+      background: white; border: none; padding: 6px 10px;
+      border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15);
+      font-size: 20px; cursor: pointer;
+    }
+    .sidebar {
+      position: absolute; z-index: 1000; top: 10px; left: 10px;
+      background: white; padding: 10px 12px; border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.15); max-width: 360px; font: 14px/1.3 system-ui, sans-serif;
+    }
+    @media (max-width: 767px) {
+      .sidebar { transform: translateX(-110%); transition: transform .3s ease; }
+      .sidebar.sidebar--open { transform: translateX(0); }
+    }
+    @media (min-width: 768px) {
+      #navToggle { display: none; }
+    }
+    .legend { margin-top: 8px; font-size: 13px; }
+    .legend div { margin: 4px 0; display:flex; align-items:center; gap:6px; }
+    .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; }
+    .dim { color:#666 }
+    .chip { display:inline-block; padding:2px 6px; border-radius:12px; background:#eee; margin:2px; cursor:pointer; }
     .chip.active { background:#ddd; }
-    .map-label { background:rgba(255,255,255,.85); padding:2px 6px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.12); font-size:12px; border:1px solid #0001; }
-    .legend { margin-top:8px; font-size:13px; }
-    .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; display:inline-block; vertical-align:middle; margin-right:6px; }
   </style>
 </head>
 <body>
   <div id="map"></div>
-
   <button id="navToggle" aria-controls="sidebar" aria-expanded="false">☰</button>
-
-  <div id="sidebar" class="sidebar" role="dialog" aria-label="Map controls">
-    <div><input id="searchInput" type="text" placeholder="Search…" style="width:100%; height:40px; padding:0 10px; border-radius:8px; border:1px solid #ddd;" /></div>
-    <div style="margin-top:10px;">
+  <div id="sidebar" class="sidebar">
+    <div><input id="searchInput" type="text" placeholder="Search…" style="width:100%" /></div>
+    <div style="margin-top:6px;">
       <label>Years: <span id="yearLabel"></span></label>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:4px;">
         <input type="range" id="yearStart" min="1600" max="2020" value="1600" style="flex:1;">
-        <input type="range" id="yearEnd"   min="1600" max="2020" value="2020" style="flex:1;">
+        <input type="range" id="yearEnd" min="1600" max="2020" value="2020" style="flex:1;">
       </div>
     </div>
-    <div id="layerToggles" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px;">
+    <div id="layerToggles" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;">
       <label><input type="checkbox" data-layer="People" checked> People</label>
       <label><input type="checkbox" data-layer="Places" checked> Places</label>
       <label><input type="checkbox" data-layer="Events"> Events</label>
       <label><input type="checkbox" data-layer="Birth Points" checked> Births</label>
       <label><input type="checkbox" data-layer="Death Points" checked> Deaths</label>
-      <label><input type="checkbox" id="labelsToggle"> Labels</label>
     </div>
     <div id="eraChips" style="margin-top:8px;"></div>
-    <div id="presets" style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-      <button data-range="1600-2020" data-layers="People,Places,Events,Birth Points,Death Points" style="padding:8px 10px;border-radius:10px;border:1px solid #ddd;cursor:pointer;background:#fafafa;">All</button>
-      <button data-range="1800-1900" data-layers="People" style="padding:8px 10px;border-radius:10px;border:1px solid #ddd;cursor:pointer;background:#fafafa;">People 1800–1900</button>
+    <div id="presets" style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;">
+      <button data-range="1600-2020" data-layers="People,Places,Events,Birth Points,Death Points">All</button>
+      <button data-range="1800-1900" data-layers="People">People 1800-1900</button>
     </div>
-    <div id="updated" class="legend" style="color:#666">Loading…</div>
+    <div id="updated" class="legend dim">Loading…</div>
     <div id="eraLegend" class="legend"></div>
   </div>
 
   <script>
   // ---------- CONFIG ----------
   const DATA = "data/";
-  const LINES_FILE_IS_BIRTH_TO_DEATH = true; // flip to false if your file is already death->birth
 
+  // Colors / sizes in one place
   const STYLE = {
-    people:  { base: 6, color: "#0A84FF" },
-    places:  { base: 6, color: "#2ed573" },
-    births:  { base: 6, color: "#1f77ff" },
-    deaths:  { base: 6, color: "#e43f3f" },
+    people:  { radius: 6, color: "#0A84FF" },
+    places:  { radius: 6, color: "#2ed573" },
+    births:  { radius: 6, color: "#1f77ff" },
+    deaths:  { radius: 6, color: "#e43f3f" },
     events:  { color: "#ff6b6b", weight: 2, opacity: 0.9 },
-    lines:   { weight: 3.5, opacity: 0.95 },
+    lines:   { weight: 2.5, opacity: 0.95 },             // default for lines
+    // Era-specific palette (edit freely)
     eraColors: {
-      "Colonial Era": "#5cb85c",
       "Early Republic": "#d9534f",
-      "Civil War & Reconstruction": "#5bc0de",
       "Gilded Age": "#f0ad4e",
+      "Colonial Era": "#5cb85c",
+      "Civil War & Reconstruction": "#5bc0de",
       "Progressive Era & WWI": "#337ab7",
       "Roaring 20s & Great Depression": "#8e44ad"
     }
   };
+
+  // Popup field lists (set to null to show ALL attributes)
   const FIELDS = {
-    people: [["primary_name","Name"],["sex","Sex"],["birth_year","Birth Year"],["death_year","Death Year"],["birth_place_name","Birth Place"],["death_place_name","Death Place"],["residence","Residence"]],
-    places: [["place_name","Place"],["place_type","Type"],["country","Country"],["state","State"],["county","County"]],
-    events: [["event_type","Type"],["event_year","Year"],["description","Description"]],
-    births: [["primary_name","Name"],["birth_year","Birth Year"],["birth_place_name","Birth Place"]],
-    deaths: [["primary_name","Name"],["death_year","Death Year"],["death_place_name","Death Place"]],
-    lines:  [["primary_name","Name"],["era","Era"],["birth_year","Birth Year"],["death_year","Death Year"]]
+    people: [
+      ["primary_name","Name"],
+      ["sex","Sex"],
+      ["birth_year","Birth Year"],
+      ["death_year","Death Year"],
+      ["birth_place_name","Birth Place"],
+      ["death_place_name","Death Place"],
+      ["residence","Residence"]
+    ],
+    places: [
+      ["place_name","Place"],
+      ["place_type","Type"],
+      ["country","Country"],
+      ["state","State"], ["county","County"]
+    ],
+    events: [
+      ["event_type","Type"], ["event_year","Year"], ["description","Description"]
+    ],
+    births: [
+      ["primary_name","Name"], ["birth_year","Birth Year"], ["birth_place_name","Birth Place"]
+    ],
+    deaths: [
+      ["primary_name","Name"], ["death_year","Death Year"], ["death_place_name","Death Place"]
+    ],
+    lines: [
+      ["primary_name","Name"], ["era","Era"], ["birth_year","Birth Year"], ["death_year","Death Year"]
+    ]
   };
 
-  // ---------- Map & panes ----------
-  const map = L.map("map", { preferCanvas: true, zoomControl:false, tapTolerance:25, wheelDebounceTime:35 }).setView([41.9,-87.65],5);
-  L.control.zoom({ position:'topright' }).addTo(map);
+  // ---------- Small helpers ----------
+  function loadJson(url, onOk) {
+    return fetch(url).then(r => {
+      if (!r.ok) throw new Error(${r.status} ${r.statusText} – ${url});
+      return r.json();
+    }).then(onOk).catch(err => console.error("Layer load failed:", err));
+  }
 
-  // panes: ensure points > hit > lines for click priority
-  map.createPane('linesPane');  map.getPane('linesPane').style.zIndex = 398;
-  map.createPane('hitPane');    map.getPane('hitPane').style.zIndex   = 399;
-  map.createPane('pointsPane'); map.getPane('pointsPane').style.zIndex= 401;
+  function popupTable(props, fieldList=null) {
+    const entries = fieldList
+      ? fieldList.filter(([k]) => props[k] != null && props[k] !== "")
+                .map(([k,label]) => [label, props[k]])
+      : Object.entries(props).filter(([k,v]) => v != null && v !== "" && typeof v !== "object");
+    const rows = entries.map(([k,v]) =>
+      <tr><th style="text-align:left; padding-right:.5rem; white-space:nowrap;">${k}</th><td>${v}</td></tr>).join("");
+    return <table>${rows}</table>;
+  }
 
-  const linesRenderer = L.canvas({ padding:0.5 }); // used on lines/hit
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution:'&copy; OpenStreetMap contributors' }).addTo(map);
+  const eraColor = era => STYLE.eraColors[era] || "#3742fa";
 
-  // ---------- UI refs ----------
-  const sidebarEl = document.getElementById('sidebar');
-  const navToggle  = document.getElementById('navToggle');
-  navToggle.addEventListener('click', () => {
-    const open = sidebarEl.classList.toggle('sidebar--open');
-    navToggle.setAttribute('aria-expanded', open);
-  });
-
-  const yearStartEl = document.getElementById('yearStart');
-  const yearEndEl   = document.getElementById('yearEnd');
-  const yearLabelEl = document.getElementById('yearLabel');
-  const labelsToggleEl = document.getElementById('labelsToggle');
-  const overlays = {};
   const searchIndex = [];
   const yearFilters = [];
-  function updateYearLabel(){ yearLabelEl.textContent = `${yearStartEl.value} - ${yearEndEl.value}`; }
-  function currentYearRange(){ return [+yearStartEl.value, +yearEndEl.value]; }
+  const yearStartEl = document.getElementById('yearStart');
+  const yearEndEl = document.getElementById('yearEnd');
+  const yearLabelEl = document.getElementById('yearLabel');
+  function updateYearLabel() {
+    yearLabelEl.textContent = ${yearStartEl.value} - ${yearEndEl.value};
+  }
+  function filterByYear() {
+    updateYearLabel();
+    const start = +yearStartEl.value;
+    const end = +yearEndEl.value;
+    yearFilters.forEach(fn => fn(start, end));
+  }
+  yearStartEl.addEventListener('input', filterByYear);
+  yearEndEl.addEventListener('input', filterByYear);
   updateYearLabel();
 
-  function loadJson(url){ return fetch(url).then(r => { if(!r.ok) throw new Error(`${r.status} ${r.statusText} – ${url}`); return r.json(); }); }
-  function popupTable(props, fieldList=null) {
-    const entries = fieldList ? fieldList.filter(([k]) => props[k] != null && props[k] !== "").map(([k,l]) => [l, props[k]])
-                              : Object.entries(props).filter(([k,v]) => v != null && v !== "" && typeof v !== "object");
-    return `<table>${entries.map(([k,v]) => `<tr><th style="text-align:left; padding-right:.5rem; white-space:nowrap;">${k}</th><td>${v}</td></tr>`).join("")}</table>`;
-  }
-  const eraColor = era => STYLE.eraColors[era] || "#3742fa";
-  function scaledRadius(base){ const z=map.getZoom(); return Math.max(6, Math.min(base + Math.max(0,(z-5))*0.8, 18)); }
-  function arrowSizeForZoom(){ const z=map.getZoom(); return Math.round(Math.max(10, Math.min(28, 6 + (z*2)))); }
-  function reversedGeometry(geom){
-    if(!geom) return geom;
-    const g = JSON.parse(JSON.stringify(geom));
-    if(g.type==="LineString"){ g.coordinates.reverse(); }
-    else if(g.type==="MultiLineString"){ g.coordinates = g.coordinates.map(sub => sub.slice().reverse()); }
-    return g;
-  }
+  const map = L.map("map").setView([41.9, -87.65], 5);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-  function addOverlay(layer, name, addNow=true){
+  const overlays = {};
+  function addOverlay(layer, name, addNow=true) {
     overlays[name] = layer;
-    const toggle = document.querySelector(`input[data-layer='${name}']`);
-    const update = () => { if(!toggle || toggle.checked) map.addLayer(layer); else map.removeLayer(layer); fitIfNeededSoon(); };
+    const toggle = document.querySelector(input[data-layer='${name}']);
+    const update = () => {
+      if (!toggle || toggle.checked) {
+        map.addLayer(layer);
+      } else {
+        map.removeLayer(layer);
+      }
+      fitIfNeeded();
+    };
     if (toggle) toggle.addEventListener('change', update);
     if (addNow) update();
   }
 
-  function doSearch(q){
-    q = q.trim().toLowerCase(); if(!q) return;
-    const match = searchIndex.find(({feature}) => Object.values(feature.properties||{}).some(v => String(v).toLowerCase().includes(q)));
-    if (match){
+  const searchInputEl = document.getElementById('searchInput');
+  const navToggle = document.getElementById('navToggle');
+  const sidebarEl = document.getElementById('sidebar');
+  navToggle.addEventListener('click', () => {
+    const open = sidebarEl.classList.toggle('sidebar--open');
+    navToggle.setAttribute('aria-expanded', open);
+  });
+  function doSearch(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return;
+    const match = searchIndex.find(({feature}) =>
+      Object.values(feature.properties || {}).some(v => String(v).toLowerCase().includes(q))
+    );
+    if (match) {
       const tmp = L.geoJSON(match.feature);
-      tmp.bindPopup(popupTable(match.feature.properties||{}, FIELDS[match.field]));
-      tmp.addTo(map); map.fitBounds(tmp.getBounds().pad(0.25)); tmp.openPopup();
-      setTimeout(()=>map.removeLayer(tmp), 5000);
+      tmp.bindPopup(popupTable(match.feature.properties || {}, FIELDS[match.field]));
+      tmp.addTo(map);
+      map.fitBounds(tmp.getBounds().pad(0.25));
+      tmp.openPopup();
+      setTimeout(() => map.removeLayer(tmp), 5000);
     }
   }
-  const searchInputEl = document.getElementById('searchInput');
-  searchInputEl.addEventListener('keydown', e => { if (e.key==='Enter'){ e.preventDefault(); doSearch(e.target.value); }});
   searchInputEl.addEventListener('change', e => doSearch(e.target.value));
+  searchInputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(e.target.value); }
+  });
 
   document.querySelectorAll('#presets button').forEach(btn => {
     btn.addEventListener('click', () => {
-      const layers = (btn.dataset.layers||'').split(',').map(s=>s.trim()).filter(Boolean);
-      document.querySelectorAll('input[data-layer]').forEach(cb => { cb.checked = layers.includes(cb.dataset.layer); cb.dispatchEvent(new Event('change')); });
-      if (btn.dataset.range){ const [s,e] = btn.dataset.range.split('-').map(Number); yearStartEl.value=s; yearEndEl.value=e; filterByYear(); }
+      const layers = (btn.dataset.layers || '').split(',').map(s => s.trim()).filter(Boolean);
+      document.querySelectorAll('input[data-layer]').forEach(cb => {
+        cb.checked = layers.includes(cb.dataset.layer);
+        cb.dispatchEvent(new Event('change'));
+      });
+      document.querySelectorAll('#eraChips .chip').forEach(chip => {
+        const active = layers.includes(chip.dataset.layer);
+        chip.classList.toggle('active', active);
+        const layer = overlays[chip.dataset.layer];
+        if (layer) {
+          if (active) map.addLayer(layer); else map.removeLayer(layer);
+        }
+      });
+      if (btn.dataset.range) {
+        const [s,e] = btn.dataset.range.split('-').map(Number);
+        yearStartEl.value = s;
+        yearEndEl.value = e;
+        filterByYear();
+      }
     });
   });
 
   // Data last updated
-  fetch(DATA+"places.geojson",{method:"HEAD"}).then(r => {
-    const d = r.headers.get("last-modified");
-    document.getElementById("updated").textContent = d ? `Data last updated: ${new Date(d).toLocaleString()}` : "";
-  }).catch(()=>{});
+  fetch(DATA + "places.geojson", { method: "HEAD" })
+    .then(r => {
+      const d = r.headers.get("last-modified");
+      document.getElementById("updated").textContent =
+        d ? Data last updated: ${new Date(d).toLocaleString()} : "";
+    }).catch(() => {});
 
-  function filterByYear(){ updateYearLabel(); const [start,end]=currentYearRange(); yearFilters.forEach(fn => fn(start,end)); }
-  yearStartEl.addEventListener('input', filterByYear);
-  yearEndEl.addEventListener('input', filterByYear);
-
-  // People (clustered)
-  loadJson(DATA+"people.geojson").then(data => {
-    const cluster = L.markerClusterGroup({ showCoverageOnHover:false, spiderfyOnMaxZoom:true, spiderfyDistanceMultiplier:1.5, maxClusterRadius:60, disableClusteringAtZoom:11 });
-    const layer = L.geoJSON(null, {
-      pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane:'pointsPane', radius: scaledRadius(STYLE.people.base), color: STYLE.people.color, weight:2, fillOpacity:.9, opacity:1 }),
-      onEachFeature: (f,l) => l.bindPopup(popupTable(f.properties||{}, FIELDS.people))
-    });
-    const render = (start,end) => {
-      layer.clearLayers();
-      const feats = (data.features||[]).filter(f => { const p=f.properties||{}; const y=p.birth_year||p.death_year; return !y || (y>=start && y<=end); });
-      layer.addData(feats); cluster.clearLayers(); cluster.addLayer(layer);
-    };
-    map.on('zoomend', () => layer.eachLayer(m => m.setStyle && m.setStyle({ radius: scaledRadius(STYLE.people.base) })));
-    yearFilters.push(render); render(...currentYearRange());
-    addOverlay(cluster,"People");
-    (data.features||[]).forEach(f => searchIndex.push({ feature:f, field:'people' }));
-  });
-
-  // Places
-  loadJson(DATA+"places.geojson").then(data => {
-    const layer = L.geoJSON(null, {
-      pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane:'pointsPane', radius: scaledRadius(STYLE.places.base), color: STYLE.places.color, weight:2, fillOpacity:.75 }),
-      onEachFeature: (f,l) => l.bindPopup(popupTable(f.properties||{}, FIELDS.places))
-    });
-    layer.addData(data); addOverlay(layer,"Places");
-    (data.features||[]).forEach(f => searchIndex.push({ feature:f, field:'places' }));
-    map.on('zoomend', () => layer.eachLayer(m => m.setStyle && m.setStyle({ radius: scaledRadius(STYLE.places.base) })));
-
-    const enableLabels = () => {
-      layer.eachLayer(l => l.unbindTooltip && l.unbindTooltip());
-      if (!labelsToggleEl.checked || map.getZoom() < 8) return;
-      layer.eachLayer(l => {
-        const name = l.feature?.properties?.place_name || l.feature?.properties?.name;
-        if (name) l.bindTooltip(name, { permanent:true, direction:'top', className:'map-label', offset:[0,-8] }).openTooltip();
+  // ---------- People (Person_Locations) ----------
+  loadJson(DATA + "people.geojson", data => {
+    const cluster = L.markerClusterGroup();
+    const render = (start, end) => {
+      cluster.clearLayers();
+      const layer = L.geoJSON(data, {
+        filter: f => {
+          const y = (f.properties || {}).birth_year || (f.properties || {}).death_year;
+          return !y || (y >= start && y <= end);
+        },
+        pointToLayer: (f, latlng) =>
+          L.circleMarker(latlng, { radius: STYLE.people.radius, color: STYLE.people.color, weight: 1, fillOpacity: .85 }),
+        onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.people))
       });
+      cluster.addLayer(layer);
     };
-    labelsToggleEl.addEventListener('change', enableLabels);
-    map.on('zoomend', enableLabels);
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(cluster, "People");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'people' }));
   });
 
-  // Events
-  loadJson(DATA+"events.geojson").then(data => {
+  // ---------- Places ----------
+  loadJson(DATA + "places.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.places.radius, color: STYLE.places.color, weight: 1, fillOpacity: .6 }),
+      style: () => ({ color: STYLE.places.color, weight: 2, opacity: .8, fillOpacity: .2 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.places))
+    });
+    addOverlay(layer, "Places");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'places' }));
+  });
+
+  // ---------- Events (Event_Points) ----------
+  loadJson(DATA + "events.geojson", data => {
     const layer = L.geoJSON([], {
-      pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane:'pointsPane', radius:6, color:"#b30000", weight:2, fillOpacity:.9 }),
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: 6, color: "#b30000", weight: 1, fillOpacity: .9 }),
       style: () => ({ ...STYLE.events }),
-      onEachFeature: (f,l) => l.bindPopup(popupTable(f.properties||{}, FIELDS.events))
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.events))
     });
-    const render = (start,end) => {
+    const render = (start, end) => {
       layer.clearLayers();
-      const feats = (data.features||[]).filter(f => { const y=(f.properties||{}).event_year; return !y || (y>=start && y<=end); });
-      layer.addData(feats);
+      const feats = (data.features || []).filter(f => {
+        const y = (f.properties || {}).event_year;
+        return !y || (y >= start && y <= end);
+      });
+      layer.addData({ type: "FeatureCollection", features: feats });
     };
-    yearFilters.push(render); render(...currentYearRange());
-    addOverlay(layer,"Events",false);
-    (data.features||[]).forEach(f => searchIndex.push({ feature:f, field:'events' }));
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(layer, "Events", false);
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'events' }));
   });
 
-  // Birth points
-  loadJson(DATA+"birth_location_points.geojson").then(data => {
+  // ---------- Birth / Death points ----------
+  loadJson(DATA + "birth_location_points.geojson", data => {
     const layer = L.geoJSON([], {
-      pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane:'pointsPane', radius: scaledRadius(STYLE.births.base), color: STYLE.births.color, weight:2, fillOpacity:.95 }),
-      onEachFeature: (f,l) => l.bindPopup(popupTable(f.properties||{}, FIELDS.births))
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.births.radius, color: STYLE.births.color, weight: 1, fillOpacity: .9 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.births))
     });
-    const render = (start,end) => {
+    const render = (start, end) => {
       layer.clearLayers();
-      const feats = (data.features||[]).filter(f => { const y=(f.properties||{}).birth_year; return !y || (y>=start && y<=end); });
-      layer.addData(feats);
+      const feats = (data.features || []).filter(f => {
+        const y = (f.properties || {}).birth_year;
+        return !y || (y >= start && y <= end);
+      });
+      layer.addData({ type: "FeatureCollection", features: feats });
     };
-    yearFilters.push(render); render(...currentYearRange());
-    addOverlay(layer,"Birth Points");
-    (data.features||[]).forEach(f => searchIndex.push({ feature:f, field:'births' }));
-    map.on('zoomend', () => layer.eachLayer(m => m.setStyle && m.setStyle({ radius: scaledRadius(STYLE.births.base) })));
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(layer, "Birth Points");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'births' }));
   });
 
-  // Death points
-  loadJson(DATA+"death_location_points.geojson").then(data => {
+  loadJson(DATA + "death_location_points.geojson", data => {
     const layer = L.geoJSON([], {
-      pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane:'pointsPane', radius: scaledRadius(STYLE.deaths.base), color: STYLE.deaths.color, weight:2, fillOpacity:.95 }),
-      onEachFeature: (f,l) => l.bindPopup(popupTable(f.properties||{}, FIELDS.deaths))
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.deaths.radius, color: STYLE.deaths.color, weight: 1, fillOpacity: .9 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.deaths))
     });
-    const render = (start,end) => {
+    const render = (start, end) => {
       layer.clearLayers();
-      const feats = (data.features||[]).filter(f => { const y=(f.properties||{}).death_year; return !y || (y>=start && y<=end); });
-      layer.addData(feats);
+      const feats = (data.features || []).filter(f => {
+        const y = (f.properties || {}).death_year;
+        return !y || (y >= start && y <= end);
+      });
+      layer.addData({ type: "FeatureCollection", features: feats });
     };
-    yearFilters.push(render); render(...currentYearRange());
-    addOverlay(layer,"Death Points");
-    (data.features||[]).forEach(f => searchIndex.push({ feature:f, field:'deaths' }));
-    map.on('zoomend', () => layer.eachLayer(m => m.setStyle && m.setStyle({ radius: scaledRadius(STYLE.deaths.base) })));
+    yearFilters.push(render);
+    render(+yearStartEl.value, +yearEndEl.value);
+    addOverlay(layer, "Death Points");
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'deaths' }));
   });
 
-  // Birth→Death Lines per Era (rendered as Death→Birth w/ arrows at end)
-  const chipContainer = document.getElementById('eraChips');
-  const legendEl = document.getElementById("eraLegend");
-  loadJson(DATA+"birth_to_death_lines_eras.geojson").then(data => {
-    const eras = Array.from(new Set((data.features||[]).map(f => (f.properties||{}).era).filter(Boolean))).sort();
+  // ---------- Birth→Death Lines split into toggles per Era ----------
+  loadJson(DATA + "birth_to_death_lines_eras.geojson", data => {
+    const eras = Array.from(
+      new Set((data.features || []).map(f => (f.properties || {}).era).filter(Boolean))
+    ).sort();
     const lineLayers = {};
-    const eraGroups = {};
-
     eras.forEach(era => {
-      eraGroups[era] = L.layerGroup([], { pane:'linesPane', renderer: linesRenderer });
-      lineLayers[era] = L.geoJSON([], {
-        pane:'linesPane',
-        renderer: linesRenderer,
-        style: () => ({ color: eraColor(era), weight: STYLE.lines.weight, opacity: STYLE.lines.opacity, lineCap:'round', lineJoin:'round' }),
-        onEachFeature: (f, poly) => {
-          poly.bindPopup(popupTable(f.properties||{}, FIELDS.lines));
-          // Add an invisible, lower-z hit line for fat touch area
-          const hit = L.polyline(poly.getLatLngs(), { pane:'hitPane', renderer: linesRenderer, color:'#000', weight:12, opacity:0, interactive:true, bubblingMouseEvents:false })
-            .on('click', () => poly.openPopup());
-          eraGroups[era].addLayer(poly);
-          eraGroups[era].addLayer(hit);
-        }
+      const sub = L.geoJSON([], {
+        style: () => ({ color: eraColor(era), weight: STYLE.lines.weight, opacity: STYLE.lines.opacity }),
+        onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.lines))
       });
-      eraGroups[era].addLayer(lineLayers[era]);
-      addOverlay(eraGroups[era], `Lines: ${era}`);
+      lineLayers[era] = sub;
+      addOverlay(sub, Lines: ${era});
     });
-
-    function featureToDeathBirth(f){
-      if (!f.geometry) return f;
-      if (LINES_FILE_IS_BIRTH_TO_DEATH){
-        return { ...f, geometry: reversedGeometry(f.geometry) };
-      }
-      return f;
-    }
-
-    const applyArrows = () => {
-      const size = arrowSizeForZoom() + 'px';
-      eras.forEach(era => {
-        lineLayers[era].eachLayer(l => { // only the visible polyline layer
-          if (typeof l.arrowheads === 'function') {
-            l.arrowheads({ frequency:'end', size, fill:true, offsets:{ end:'10px' } });
-          }
-        });
-      });
-    };
-
-    const render = (start,end) => {
+    const render = (start, end) => {
       eras.forEach(era => {
         const layer = lineLayers[era];
         layer.clearLayers();
-        const feats = (data.features||[]).filter(f => {
-          const p=f.properties||{}; const y=p.birth_year||p.death_year;
-          return p.era===era && (!y || (y>=start && y<=end));
-        }).map(featureToDeathBirth);
-        layer.addData(feats);
+        const feats = (data.features || []).filter(f => {
+          const p = f.properties || {};
+          const y = p.birth_year || p.death_year;
+          return p.era === era && (!y || (y >= start && y <= end));
+        });
+        layer.addData({ type: "FeatureCollection", features: feats });
+        layer.eachLayer(l => {
+          if (l.arrowheads) l.arrowheads({ frequency: 'end', size: '15px' });
+        });
       });
-      applyArrows();
     };
-
     yearFilters.push(render);
-    render(...currentYearRange());
-    map.on('zoomend', applyArrows);
+    render(+yearStartEl.value, +yearEndEl.value);
 
+    const chipContainer = document.getElementById('eraChips');
     eras.forEach(era => {
       const chip = document.createElement('span');
-      chip.textContent = era; chip.className = 'chip active';
-      const layerName = `Lines: ${era}`; chip.dataset.layer = layerName;
-      chip.style.background = eraColor(era); chip.style.color='#fff';
+      chip.textContent = era;
+      chip.className = 'chip active';
+      const layerName = Lines: ${era};
+      chip.dataset.layer = layerName;
+      chip.style.background = eraColor(era);
       chip.addEventListener('click', () => {
         chip.classList.toggle('active');
         const layer = overlays[layerName];
         if (chip.classList.contains('active')) map.addLayer(layer); else map.removeLayer(layer);
-        fitIfNeededSoon();
       });
       chipContainer.appendChild(chip);
     });
 
-    legendEl.innerHTML = "<b>Death → Birth Lines (by Era)</b>" +
-      Object.entries(STYLE.eraColors).map(([label,col]) => `<div><span class="swatch" style="background:${col}"></span> ${label}</div>`).join("");
+    const legendEl = document.getElementById("eraLegend");
+    legendEl.innerHTML = "<b>Birth→Death Lines (Eras)</b>" +
+      Object.entries(STYLE.eraColors)
+        .map(([label, col]) => <div><span class="swatch" style="background:${col}"></span> ${label}</div>)
+        .join("");
 
-    (data.features||[]).forEach(f => searchIndex.push({ feature:f, field:'lines' }));
+    (data.features || []).forEach(f => searchIndex.push({ feature: f, field: 'lines' }));
   });
 
-  // Fit-to-data once (debounced)
-  let fitted=false, fitTimer=null;
-  function fitIfNeeded(){
+  // ----- Fit map to visible layers once -----
+  let fitted = false;
+  function fitIfNeeded() {
     if (fitted) return;
-    let bounds=null;
-    for (const layer of Object.values(overlays)){
+    let bounds = null;
+    for (const layer of Object.values(overlays)) {
       if (!map.hasLayer(layer)) continue;
-      try{
+      try {
         const b = layer.getBounds ? layer.getBounds() : L.featureGroup([layer]).getBounds();
         if (b && b.isValid()) bounds = bounds ? bounds.extend(b) : b;
-      }catch{}
+      } catch {}
     }
-    if (bounds && bounds.isValid()){ map.fitBounds(bounds.pad(0.15)); fitted=true; }
+    if (bounds && bounds.isValid()) {
+      map.fitBounds(bounds.pad(0.15));
+      fitted = true;
+    }
   }
-  function fitIfNeededSoon(){ clearTimeout(fitTimer); fitTimer=setTimeout(fitIfNeeded, 120); }
+</script>
 
-  // Year filter hook
-  function filterByYear(){ updateYearLabel(); const [s,e]=[+yearStartEl.value, +yearEndEl.value]; yearFilters.forEach(fn=>fn(s,e)); }
-  yearStartEl.addEventListener('input', filterByYear);
-  yearEndEl.addEventListener('input', filterByYear);
-  </script>
 </body>
 </html>
-
