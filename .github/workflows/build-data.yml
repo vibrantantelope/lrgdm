@@ -1,10 +1,15 @@
 name: Export GPKG to GeoJSON
 
+
+
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  
 jobs:
   export:
     runs-on: ubuntu-latest
