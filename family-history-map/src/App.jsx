@@ -1,10 +1,10 @@
-import Sidebar from './components/Sidebar'
+import BottomSheet from './components/BottomSheet'
 import { MapProvider } from './MapContext'
 
 export default function App() {
   return (
     <MapProvider>
-      <Sidebar />
+      <BottomSheet />
     </MapProvider>
   )
 }
