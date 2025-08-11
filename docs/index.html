@@ -22,6 +22,27 @@
     .legend div { margin: 4px 0; display:flex; align-items:center; gap:6px; }
     .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; }
     .dim { color:#666 }
+    .hidden { display:none; }
+
+    @media (max-width: 480px) {
+      .sidebar {
+        position: relative;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        font-size: 16px;
+        padding: 12px 16px;
+      }
+      #sidebarToggle {
+        position: fixed;
+        z-index: 1000;
+        top: 10px;
+        right: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -36,6 +57,18 @@
   <script>
   // ---------- CONFIG ----------
   const DATA = "data/";
+
+  // Mobile adjustments: move sidebar above map and allow toggling
+  if (window.matchMedia("(max-width: 480px)").matches) {
+    const sidebar = document.querySelector(".sidebar");
+    const mapEl = document.getElementById("map");
+    sidebar.parentNode.insertBefore(sidebar, mapEl);
+    const btn = document.createElement("button");
+    btn.id = "sidebarToggle";
+    btn.textContent = "Toggle Info";
+    btn.addEventListener("click", () => sidebar.classList.toggle("hidden"));
+    document.body.appendChild(btn);
+  }
 
   // Colors / sizes in one place
   const STYLE = {
