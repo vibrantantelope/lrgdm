@@ -13,4 +13,246 @@
   <body>
     <div id="root"></div>
   </body>
+<head>
+  <meta charset="utf-8" />
+  <title>Family History Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <!-- MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    .sidebar {
+      position: absolute; z-index: 1000; top: 10px; left: 10px;
+      background: white; padding: 10px 12px; border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.15); max-width: 360px; font: 14px/1.3 system-ui, sans-serif;
+    }
+    .legend { margin-top: 8px; font-size: 13px; }
+    .legend div { margin: 4px 0; display:flex; align-items:center; gap:6px; }
+    .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; }
+    .dim { color:#666 }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="sidebar">
+    <strong>Family History Map</strong>
+    <div>Click points/lines to see details. Use the layer toggle (top-right).</div>
+    <div id="updated" class="legend dim">Loading…</div>
+    <div id="eraLegend" class="legend"></div>
+  </div>
+
+  <script>
+  // ---------- CONFIG ----------
+  const DATA = "data/";
+
+  // Colors / sizes in one place
+  const STYLE = {
+    people:  { radius: 6, color: "#0A84FF" },
+    places:  { radius: 6, color: "#2ed573" },
+    births:  { radius: 6, color: "#1f77ff" },
+    deaths:  { radius: 6, color: "#e43f3f" },
+    events:  { color: "#ff6b6b", weight: 2, opacity: 0.9 },
+    lines:   { weight: 2.5, opacity: 0.95 },             // default for lines
+    // Era-specific palette (edit freely)
+    eraColors: {
+      "Early Republic": "#d9534f",
+      "Gilded Age": "#f0ad4e",
+      "Colonial Era": "#5cb85c",
+      "Civil War & Reconstruction": "#5bc0de",
+      "Progressive Era & WWI": "#337ab7",
+      "Roaring 20s & Great Depression": "#8e44ad"
+    }
+  };
+
+  // Popup field lists (set to null to show ALL attributes)
+  const FIELDS = {
+    people: [
+      ["primary_name","Name"],
+      ["sex","Sex"],
+      ["birth_year","Birth Year"],
+      ["death_year","Death Year"],
+      ["birth_place_name","Birth Place"],
+      ["death_place_name","Death Place"],
+      ["residence","Residence"]
+    ],
+    places: [
+      ["place_name","Place"],
+      ["place_type","Type"],
+      ["country","Country"],
+      ["state","State"], ["county","County"]
+    ],
+    events: [
+      ["event_type","Type"], ["event_year","Year"], ["description","Description"]
+    ],
+    births: [
+      ["primary_name","Name"], ["birth_year","Birth Year"], ["birth_place_name","Birth Place"]
+    ],
+    deaths: [
+      ["primary_name","Name"], ["death_year","Death Year"], ["death_place_name","Death Place"]
+    ],
+    lines: [
+      ["primary_name","Name"], ["era","Era"], ["birth_year","Birth Year"], ["death_year","Death Year"]
+    ]
+  };
+
+  // ---------- Small helpers ----------
+  function loadJson(url, onOk) {
+    return fetch(url).then(r => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} – ${url}`);
+      return r.json();
+    }).then(onOk).catch(err => console.error("Layer load failed:", err));
+  }
+
+  function popupTable(props, fieldList=null) {
+    const entries = fieldList
+      ? fieldList.filter(([k]) => props[k] != null && props[k] !== "")
+                .map(([k,label]) => [label, props[k]])
+      : Object.entries(props).filter(([k,v]) => v != null && v !== "" && typeof v !== "object");
+    const rows = entries.map(([k,v]) =>
+      `<tr><th style="text-align:left; padding-right:.5rem; white-space:nowrap;">${k}</th><td>${v}</td></tr>`).join("");
+    return `<table>${rows}</table>`;
+  }
+
+  const eraColor = era => STYLE.eraColors[era] || "#3742fa";
+
+  // ---------- Map ----------
+  const map = L.map("map").setView([41.9, -87.65], 5);
+  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Extra basemaps (optional – uncomment if you want more)
+  const esriGray = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Tiles © Esri" }
+  );
+  const esriNatGeo = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Tiles © Esri" }
+  );
+
+  const baseLayers = {
+    "OpenStreetMap": osm,
+    "ESRI Gray (light)": esriGray,
+    "ESRI NatGeo": esriNatGeo
+  };
+
+  const layersControl = L.control.layers(baseLayers, {}, { collapsed: false }).addTo(map);
+  const overlays = {};
+  function addOverlay(layer, name, addNow=true) {
+    overlays[name] = layer;
+    layersControl.addOverlay(layer, name);
+    if (addNow) map.addLayer(layer);
+    fitIfNeeded();
+  }
+
+  // Data last updated
+  fetch(DATA + "places.geojson", { method: "HEAD" })
+    .then(r => {
+      const d = r.headers.get("last-modified");
+      document.getElementById("updated").textContent =
+        d ? `Data last updated: ${new Date(d).toLocaleString()}` : "";
+    }).catch(() => {});
+
+  // ---------- People (Person_Locations) ----------
+  loadJson(DATA + "people.geojson", data => {
+    const cluster = L.markerClusterGroup();
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.people.radius, color: STYLE.people.color, weight: 1, fillOpacity: .85 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.people))
+    });
+    cluster.addLayer(layer);
+    addOverlay(cluster, "People", true);
+  });
+
+  // ---------- Places ----------
+  loadJson(DATA + "places.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.places.radius, color: STYLE.places.color, weight: 1, fillOpacity: .6 }),
+      style: () => ({ color: STYLE.places.color, weight: 2, opacity: .8, fillOpacity: .2 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.places))
+    });
+    addOverlay(layer, "Places", true);
+  });
+
+  // ---------- Events (Event_Points) ----------
+  loadJson(DATA + "events.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: 6, color: "#b30000", weight: 1, fillOpacity: .9 }),
+      style: () => ({ ...STYLE.events }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.events))
+    });
+    addOverlay(layer, "Events", false);
+  });
+
+  // ---------- Birth / Death points ----------
+  loadJson(DATA + "birth_location_points.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.births.radius, color: STYLE.births.color, weight: 1, fillOpacity: .9 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.births))
+    });
+    addOverlay(layer, "Birth Points", true);
+  });
+
+  loadJson(DATA + "death_location_points.geojson", data => {
+    const layer = L.geoJSON(data, {
+      pointToLayer: (f, latlng) =>
+        L.circleMarker(latlng, { radius: STYLE.deaths.radius, color: STYLE.deaths.color, weight: 1, fillOpacity: .9 }),
+      onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.deaths))
+    });
+    addOverlay(layer, "Death Points", true);
+  });
+
+  // ---------- Birth→Death Lines split into toggles per Era ----------
+  loadJson(DATA + "birth_to_death_lines_eras.geojson", data => {
+    const eras = Array.from(
+      new Set((data.features || []).map(f => (f.properties || {}).era).filter(Boolean))
+    ).sort();
+    // Build a layer for each era, add each as its own toggle
+    eras.forEach(era => {
+      const sub = L.geoJSON(data, {
+        filter: f => (f.properties || {}).era === era,
+        style: () => ({ color: eraColor(era), weight: STYLE.lines.weight, opacity: STYLE.lines.opacity }),
+        onEachFeature: (f, l) => l.bindPopup(popupTable(f.properties || {}, FIELDS.lines))
+      });
+      addOverlay(sub, `Lines: ${era}`, true);
+    });
+
+    // Build a legend from STYLE.eraColors
+    const legendEl = document.getElementById("eraLegend");
+    legendEl.innerHTML = "<b>Birth→Death Lines (Eras)</b>" +
+      Object.entries(STYLE.eraColors)
+        .map(([label, col]) => `<div><span class="swatch" style="background:${col}"></span> ${label}</div>`)
+        .join("");
+  });
+
+  // ----- Fit map to visible layers once -----
+  let fitted = false;
+  function fitIfNeeded() {
+    if (fitted) return;
+    let bounds = null;
+    for (const layer of Object.values(overlays)) {
+      if (!map.hasLayer(layer)) continue;
+      try {
+        const b = layer.getBounds ? layer.getBounds() : L.featureGroup([layer]).getBounds();
+        if (b && b.isValid()) bounds = bounds ? bounds.extend(b) : b;
+      } catch {}
+    }
+    if (bounds && bounds.isValid()) {
+      map.fitBounds(bounds.pad(0.15));
+      fitted = true;
+    }
+  }
+</script>
+
+</body>
 </html>
