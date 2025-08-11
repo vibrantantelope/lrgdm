@@ -10,8 +10,12 @@
         position: absolute; z-index: 1100; top: 10px; left: 10px;
         background: white; border: none; padding: 6px 10px;
         border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15);
-        font-size: 20px; cursor: pointer;
+        font-size: 20px; cursor: pointer; color: #333;
+        transition: background .3s ease, color .3s ease;
       }
+      #navToggle span { display:block; transition: transform .3s ease; }
+      #navToggle[aria-expanded="true"] { background:#333; color:#fff; }
+      #navToggle[aria-expanded="true"] span { transform: rotate(90deg); }
       .sidebar {
         position: absolute; z-index: 1000; top: 10px; left: 10px;
         background: white; padding: 10px 12px; border-radius: 8px;
