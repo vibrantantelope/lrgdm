@@ -94,3 +94,26 @@ html, body, #root, #map {
   content: "\2713";
   font-size: 0.85em;
 }
+
+.legend {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.legend div {
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid #3333;
+}
+
+.dim {
+  color: #666;
+}

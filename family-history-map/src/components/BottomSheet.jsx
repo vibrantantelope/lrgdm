@@ -3,6 +3,9 @@ import LayerToggles from './LayerToggles'
 import YearRange from './YearRange'
 import Search from './Search'
 import EraChips from './EraChips'
+import BasemapSelector from './BasemapSelector'
+import DataUpdated from './DataUpdated'
+import EraLegend from './EraLegend'
 
 const TABS = ['Explore', 'Layers', 'Filters', 'Styles', 'Legend']
 
@@ -70,8 +73,13 @@ export default function BottomSheet() {
                 <EraChips />
               </>
             )}
-            {activeTab === 'Styles' && <p>Style rules coming soon.</p>}
-            {activeTab === 'Legend' && <p>Legend content here.</p>}
+            {activeTab === 'Styles' && <BasemapSelector />}
+            {activeTab === 'Legend' && (
+              <>
+                <DataUpdated />
+                <EraLegend />
+              </>
+            )}
           </div>
           <button className="close-button" onClick={() => setOpen(false)}>
             Close
