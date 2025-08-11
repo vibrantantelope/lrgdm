@@ -162,7 +162,20 @@
     "ESRI NatGeo": esriNatGeo
   };
 
-  const layersControl = L.control.layers(baseLayers, {}, { collapsed: false }).addTo(map);
+  const layersControl = L.control.layers(
+    baseLayers,
+    {},
+    { collapsed: window.innerWidth < 600 }
+  ).addTo(map);
+
+  window.addEventListener('resize', () => {
+    const shouldCollapse = window.innerWidth < 600;
+    if (shouldCollapse !== layersControl.options.collapsed) {
+      layersControl.options.collapsed = shouldCollapse;
+      shouldCollapse ? layersControl.collapse() : layersControl.expand();
+    }
+  });
+
   const overlays = {};
   function addOverlay(layer, name, addNow=true) {
     overlays[name] = layer;
