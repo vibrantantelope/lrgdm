@@ -42,6 +42,7 @@ export function MapProvider({ children }) {
   const overlaysRef = useRef({})
   const searchIndexRef = useRef([])
   const yearFiltersRef = useRef([])
+  const fittedRef = useRef(false)
 
   const [yearStart, setYearStart] = useState(1600)
   const [yearEnd, setYearEnd] = useState(2020)
@@ -59,15 +60,38 @@ export function MapProvider({ children }) {
     'Roaring 20s & Great Depression': '#8e44ad',
   }
 
+  const fitIfNeeded = () => {
+    if (fittedRef.current) return
+    let bounds = null
+    Object.values(overlaysRef.current).forEach(layer => {
+      if (!mapRef.current.hasLayer(layer)) return
+      try {
+        const b = layer.getBounds
+          ? layer.getBounds()
+          : L.featureGroup([layer]).getBounds()
+        if (b && b.isValid()) bounds = bounds ? bounds.extend(b) : b
+      } catch {
+        /* ignore */
+      }
+    })
+    if (bounds && bounds.isValid()) {
+      mapRef.current.fitBounds(bounds.pad(0.15))
+      fittedRef.current = true
+    }
+  }
+
   useEffect(() => {
-    mapRef.current = L.map('map').setView([0, 0], 2)
+    mapRef.current = L.map('map').setView([41.9, -87.65], 5)
 
     const loadJson = url => fetch(url).then(r => r.json())
 
     const addOverlay = (layer, name, checked = true) => {
       overlaysRef.current[name] = layer
       setActiveLayers(prev => ({ ...prev, [name]: checked }))
-      if (checked) mapRef.current.addLayer(layer)
+      if (checked) {
+        mapRef.current.addLayer(layer)
+        fitIfNeeded()
+      }
     }
 
     // People
@@ -274,8 +298,12 @@ export function MapProvider({ children }) {
   const setLayerVisible = (name, visible) => {
     const layer = overlaysRef.current[name]
     if (!layer) return
-    if (visible) mapRef.current.addLayer(layer)
-    else mapRef.current.removeLayer(layer)
+    if (visible) {
+      mapRef.current.addLayer(layer)
+      fitIfNeeded()
+    } else {
+      mapRef.current.removeLayer(layer)
+    }
     setActiveLayers(prev => ({ ...prev, [name]: visible }))
   }
 
