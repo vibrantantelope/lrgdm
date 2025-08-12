@@ -23,6 +23,8 @@
     .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #3333; }
     .dim { color:#666 }
     .hidden { display:none; }
+    .sidebar h1 { margin: 0 0 8px; font-size: 24px; }
+    .descriptor { margin-bottom: 12px; }
 
     @media (max-width: 480px) {
       .sidebar {
@@ -42,13 +44,15 @@
         top: 10px;
         right: 10px;
       }
+      .sidebar h1 { font-size: 20px; }
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <div class="sidebar">
-    <strong>Family History Map</strong>
+    <h1>Family History Map</h1>
+    <p class="descriptor">Hi! We're so excited for our trip! Here's some possibly daily schedules based on the activity sheet responses.</p>
     <div>Click points/lines to see details. Use the layer toggle (top-right).</div>
     <div id="updated" class="legend dim">Loading…</div>
     <div id="eraLegend" class="legend"></div>
